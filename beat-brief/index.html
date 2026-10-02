@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Beat Brief — Production Prompt Generator</title>
+<style>
+  :root{
+    --bg:#0e0f16; --panel:#171a24; --panel-2:#1e222e; --line:#2b3040;
+    --ink:#eef1f8; --ink-2:#aeb6cc; --ink-3:#7e879e;
+    --accent:#5b9dff; --ok:#4ade80; --neg:#ef6b6b;
+    --cat-daw:#ff5d5d; --cat-drums:#ff9f45; --cat-bass:#ffd23f; --cat-melody:#4ade80;
+    --cat-vocals:#34d8d8; --cat-fx:#5b9dff; --cat-lyrics:#a78bfa; --cat-arr:#f472b6; --cat-mix:#9aa7c7;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 18px 40px -24px rgba(0,0,0,.8);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef0f6; --panel:#ffffff; --panel-2:#f5f6fb; --line:#dfe3ee;
+      --ink:#171a24; --ink-2:#454c60; --ink-3:#79808f; --accent:#2e6bd6; --ok:#1e9e52; --neg:#cf3b3b;
+      --cat-daw:#d63b3b; --cat-drums:#bd6410; --cat-bass:#9a7400; --cat-melody:#1e9e52;
+      --cat-vocals:#0c8f8f; --cat-fx:#2e6bd6; --cat-lyrics:#7050d8; --cat-arr:#cf3f84; --cat-mix:#5a6685;
+      --shadow:0 1px 0 rgba(255,255,255,.6), 0 20px 40px -28px rgba(24,28,48,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e0f16; --panel:#171a24; --panel-2:#1e222e; --line:#2b3040;
+    --ink:#eef1f8; --ink-2:#aeb6cc; --ink-3:#7e879e; --accent:#5b9dff; --ok:#4ade80; --neg:#ef6b6b;
+    --cat-daw:#ff5d5d; --cat-drums:#ff9f45; --cat-bass:#ffd23f; --cat-melody:#4ade80;
+    --cat-vocals:#34d8d8; --cat-fx:#5b9dff; --cat-lyrics:#a78bfa; --cat-arr:#f472b6; --cat-mix:#9aa7c7;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 18px 40px -24px rgba(0,0,0,.8);
+  }
+  :root[data-theme="light"]{
+    --bg:#eef0f6; --panel:#ffffff; --panel-2:#f5f6fb; --line:#dfe3ee;
+    --ink:#171a24; --ink-2:#454c60; --ink-3:#79808f; --accent:#2e6bd6; --ok:#1e9e52; --neg:#cf3b3b;
+    --cat-daw:#d63b3b; --cat-drums:#bd6410; --cat-bass:#9a7400; --cat-melody:#1e9e52;
+    --cat-vocals:#0c8f8f; --cat-fx:#2e6bd6; --cat-lyrics:#7050d8; --cat-arr:#cf3f84; --cat-mix:#5a6685;
+    --shadow:0 1px 0 rgba(255,255,255,.6), 0 20px 40px -28px rgba(24,28,48,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+  .wrap{max-width:1180px; margin:0 auto; padding:clamp(18px,3.2vw,40px) clamp(14px,3vw,30px) 232px}
+
+  .kicker{font-family:ui-monospace,monospace; font-size:11.5px; letter-spacing:.28em; text-transform:uppercase; color:var(--ink-3)}
+  h1{margin:.3em 0 .05em; font-size:clamp(26px,4.4vw,44px); line-height:1.02; font-weight:800; letter-spacing:-.02em; text-wrap:balance}
+  .lede{max-width:58ch; color:var(--ink-2); font-size:14.5px; margin:.3em 0 0}
+
+  .glabel{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); font-weight:700}
+
+  .console{margin-top:22px; border:1px solid var(--line); border-radius:14px; background:var(--panel);
+    box-shadow:var(--shadow); padding:16px clamp(14px,2vw,20px); display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px 22px}
+  .ctl{display:flex; flex-direction:column; gap:7px}
+  .seg{display:inline-flex; padding:3px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; gap:3px}
+  .seg button{appearance:none; border:0; cursor:pointer; font:inherit; font-weight:650; font-size:13.5px; padding:7px 15px; border-radius:8px; background:transparent; color:var(--ink-2)}
+  .seg button[aria-pressed="true"]{background:var(--accent); color:#fff}
+  .tempo-row{display:flex; align-items:center; gap:12px; min-width:220px}
+  input[type=range]{width:150px; accent-color:var(--accent); cursor:pointer}
+  .bpm{font-family:ui-monospace,monospace; font-size:15px; font-weight:700; min-width:74px}
+  .bpm span{color:var(--ink-3); font-weight:400; font-size:12px}
+  select{appearance:none; font:inherit; font-size:13.5px; color:var(--ink); background:var(--panel-2); border:1px solid var(--line);
+    border-radius:9px; padding:8px 30px 8px 12px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+    background-position:calc(100% - 15px) center,calc(100% - 10px) center; background-size:5px 5px,5px 5px; background-repeat:no-repeat}
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  .btn{appearance:none; cursor:pointer; font:inherit; font-weight:600; font-size:13px; padding:8px 14px; border-radius:9px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--ink); display:inline-flex; align-items:center; gap:7px}
+  .btn:hover{border-color:var(--ink-3)}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  .btn:focus-visible,.seg button:focus-visible,.chip:focus-visible,select:focus-visible,.cbtn:focus-visible,.mode button:focus-visible,.chipcopy:focus-visible,.tinput:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .cbtn{appearance:none; cursor:pointer; font:inherit; font-size:11px; font-weight:650; letter-spacing:.02em;
+    padding:4px 9px; border-radius:7px; border:1px solid var(--line); background:var(--panel-2); color:var(--ink-2);
+    display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
+  .cbtn:hover{border-color:var(--ink-3); color:var(--ink)}
+  .cbtn.copied{border-color:var(--ok); color:var(--ok)}
+  .cbtn svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.7}
+
+  .vibe{margin-top:18px; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); padding:6px clamp(12px,2vw,18px) 14px}
+  .group{padding:12px 0; border-bottom:1px dashed var(--line)}
+  .group:last-child{border-bottom:0}
+  .group-head{display:flex; align-items:center; gap:12px; margin-bottom:9px}
+  .group-head .glabel{flex:0 0 auto}
+  .group-head .spacer{flex:1}
+
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{appearance:none; cursor:pointer; font:inherit; font-size:12.5px; line-height:1.3; color:var(--ink);
+    padding:5px 11px; border-radius:8px; display:inline-flex; align-items:center; gap:7px;
+    background:color-mix(in srgb, var(--c,var(--accent)) 9%, var(--panel-2));
+    border:1px solid color-mix(in srgb, var(--c,var(--accent)) 22%, var(--line)); transition:background .12s,border-color .12s}
+  .chip .tick{width:11px; height:11px; border-radius:3px; border:1.5px solid color-mix(in srgb, var(--c,var(--accent)) 55%, var(--line)); flex:none; position:relative}
+  .chip[aria-pressed="true"]{background:color-mix(in srgb, var(--c,var(--accent)) 26%, var(--panel)); border-color:var(--c,var(--accent)); font-weight:650; box-shadow:0 0 0 1px var(--c,var(--accent)) inset}
+  .chip[aria-pressed="true"] .tick{background:var(--c,var(--accent)); border-color:var(--c,var(--accent))}
+  .chip[aria-pressed="true"] .tick::after{content:""; position:absolute; inset:0; margin:auto; width:3px; height:6px; border:solid var(--panel); border-width:0 1.6px 1.6px 0; transform:translateY(-1px) rotate(45deg)}
+  .chip.pill{border-radius:999px; padding:6px 13px}
+  .chip.pill[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink); box-shadow:none}
+
+  /* per-chip copy segment */
+  .chiprow{display:inline-flex; align-items:stretch; vertical-align:top}
+  .chiprow .chip{border-top-right-radius:0; border-bottom-right-radius:0; border-right:0}
+  .chipcopy{appearance:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0 8px; color:var(--ink-3);
+    background:color-mix(in srgb, var(--c,var(--accent)) 9%, var(--panel-2));
+    border:1px solid color-mix(in srgb, var(--c,var(--accent)) 22%, var(--line)); border-radius:0 8px 8px 0}
+  .chiprow.pill .chipcopy{border-radius:0 999px 999px 0}
+  .chipcopy:hover{color:var(--ink); border-color:color-mix(in srgb, var(--c,var(--accent)) 45%, var(--line))}
+  .chipcopy.copied{color:var(--ok); border-color:var(--ok); background:color-mix(in srgb, var(--ok) 14%, var(--panel-2))}
+  .chipcopy svg{width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.7}
+  .chiprow .chip[aria-pressed="true"] + .chipcopy{border-color:var(--c,var(--accent))}
+
+  .section-h{margin:24px 2px 0; display:flex; align-items:center; gap:12px}
+  .section-h .spacer{flex:1}
+  .grid{margin-top:12px; display:grid; gap:13px; grid-template-columns:repeat(auto-fill,minmax(292px,1fr))}
+  .card{--c:var(--ink-3); border:1px solid var(--line); border-radius:13px; background:var(--panel); overflow:hidden; box-shadow:var(--shadow)}
+  .card .bar{height:5px; background:var(--c)}
+  .card .body{padding:13px 14px 15px}
+  .card h3{margin:0; font-size:11.5px; letter-spacing:.15em; text-transform:uppercase; font-weight:700; color:var(--c); display:flex; align-items:center; gap:9px}
+  .card h3 .n{font-family:ui-monospace,monospace; font-size:11px; color:var(--ink-3); letter-spacing:.02em}
+  .card h3 .spacer{flex:1}
+  .card .chips{margin-top:11px}
+
+  .neg-input{margin-top:11px; width:100%; font:inherit; font-size:13px; color:var(--ink); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:9px; padding:9px 12px}
+  .neg-input::placeholder{color:var(--ink-3)}
+  .neg-input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* presets & sharing */
+  .trow{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:11px}
+  .tinput{flex:1 1 200px; min-width:150px; font:inherit; font-size:13px; color:var(--ink); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:9px; padding:9px 12px}
+  .tinput::placeholder{color:var(--ink-3)}
+  .tinput:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .preset-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; min-height:20px}
+  .preset-list:empty::before{content:"No saved presets yet — build a prompt, then Save current."; color:var(--ink-3); font-size:12.5px}
+  .pchip{display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; background:var(--panel-2); overflow:hidden}
+  .pchip .load{appearance:none; border:0; background:transparent; cursor:pointer; font:inherit; font-size:12.5px; font-weight:650; color:var(--ink); padding:6px 8px 6px 13px}
+  .pchip .load:hover{color:var(--accent)}
+  .pchip .mini{appearance:none; border:0; background:transparent; cursor:pointer; color:var(--ink-3); padding:6px 8px; font-size:12px; line-height:1; display:inline-flex; align-items:center}
+  .pchip .mini svg{width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.7}
+  .pchip .mini:hover{color:var(--ink)}
+  .pchip .mini.copied{color:var(--ok)}
+  .pchip .del{font-size:15px; font-weight:700}
+  .pchip .del:hover{color:var(--neg)}
+  .divlabel{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); font-weight:700; margin:16px 0 0}
+  .spacer{flex:1 1 auto}
+
+  .dock{position:fixed; left:0; right:0; bottom:0; z-index:20; padding:0 clamp(14px,3vw,30px) 14px; pointer-events:none}
+  .dock-inner{max-width:1180px; margin:0 auto; pointer-events:auto; border:1px solid var(--line); border-radius:14px 14px 0 14px;
+    background:color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter:blur(10px);
+    box-shadow:0 -10px 40px -20px rgba(0,0,0,.6), var(--shadow); padding:13px 15px 14px}
+  .dock-head{display:flex; align-items:center; gap:12px; margin-bottom:9px; flex-wrap:wrap}
+  .dock-head .t{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); font-weight:700}
+  .dock-head .count{font-family:ui-monospace,monospace; font-size:11.5px; color:var(--ink-2); background:var(--panel-2); border:1px solid var(--line); padding:2px 9px; border-radius:999px}
+  .mode{display:inline-flex; padding:2px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; gap:2px}
+  .mode button{appearance:none; border:0; cursor:pointer; font:inherit; font-size:12px; font-weight:600; padding:5px 11px; border-radius:6px; background:transparent; color:var(--ink-2)}
+  .mode button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+  .dock .out{font-family:ui-monospace,monospace; font-size:13px; line-height:1.55; color:var(--ink); background:var(--bg);
+    border:1px solid var(--line); border-radius:10px; padding:11px 13px; max-height:116px; overflow:auto; white-space:pre-wrap; word-break:break-word}
+  .dock .out .ph{color:var(--ink-3)}
+  .dock-foot{display:flex; justify-content:flex-end; gap:8px; margin-top:10px}
+
+  footer{margin-top:8px; color:var(--ink-3); font-size:12px; text-align:center}
+  @media (max-width:600px){ .console{gap:14px 16px} input[type=range]{width:120px} .dock .out{max-height:92px} }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important; scroll-behavior:auto !important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">Beat Brief · Prompt Generator</div>
+    <h1>Generate a production prompt</h1>
+    <p class="lede">Multi-select across every dimension — genre, vibe, and the nine color-coded ingredient categories. The prompt assembles live, and there's a copy button on every group so you can lift any part on its own or grab the whole thing.</p>
+  </header>
+
+  <section class="console" aria-label="Global controls">
+    <div class="ctl">
+      <span class="glabel">Genre</span>
+      <div class="seg" id="genreSeg" role="group" aria-label="Genre">
+        <button type="button" data-genre="hiphop" aria-pressed="true">Hip Hop / Rap</button>
+        <button type="button" data-genre="dnb" aria-pressed="false">Drum &amp; Bass</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label class="glabel" for="tempo">Tempo</label>
+      <div class="tempo-row">
+        <input type="range" id="tempo" min="60" max="185" value="88">
+        <div class="bpm"><span id="tempoVal">88</span> <span>BPM</span></div>
+      </div>
+    </div>
+    <div class="ctl">
+      <label class="glabel" for="keySel">Key</label>
+      <select id="keySel" aria-label="Musical key"></select>
+    </div>
+    <div class="spacer"></div>
+    <div class="ctl">
+      <span class="glabel">&nbsp;</span>
+      <div class="btns">
+        <button type="button" class="btn" id="randomBtn">🎲 Surprise me</button>
+        <button type="button" class="btn" id="clearBtn">Clear all</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="vibe" id="vibe" aria-label="Vibe"></section>
+
+  <div class="section-h">
+    <span class="glabel">Subgenre &amp; ingredients — multi-select</span>
+    <span class="spacer"></span>
+    <span class="glabel" style="color:var(--ink-2)">copy any group ↓</span>
+  </div>
+
+  <section class="vibe" id="subWrap" style="margin-top:12px" aria-label="Subgenre"></section>
+
+  <div class="grid" id="grid"></div>
+
+  <section class="vibe" id="negWrap" style="margin-top:18px" aria-label="Negative prompt"></section>
+
+  <section class="vibe" id="presetPanel" style="margin-top:18px" aria-label="Presets and sharing">
+    <div class="group" style="border-bottom:0">
+      <div class="group-head"><span class="glabel">Presets &amp; sharing</span><span class="spacer"></span></div>
+      <div class="trow">
+        <input type="text" class="tinput" id="presetName" placeholder="Name this preset — e.g. Late-night trap">
+        <button type="button" class="btn primary" id="savePreset">Save current</button>
+      </div>
+      <div class="preset-list" id="presetList" aria-label="Saved presets"></div>
+      <p class="divlabel">Share &amp; import</p>
+      <div class="trow">
+        <button type="button" class="cbtn" id="copyLink">Copy share link</button>
+        <button type="button" class="cbtn" id="copyCode">Copy share code</button>
+        <span class="spacer"></span>
+      </div>
+      <div class="trow">
+        <input type="text" class="tinput" id="importBox" placeholder="Paste a share link or code to load it…">
+        <button type="button" class="btn" id="importBtn">Import</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Presets are saved in this browser · share links/codes carry the full setup. Representative ingredients — not exhaustive. Production styles vary by artist and era.</footer>
+</div>
+
+<div class="dock">
+  <div class="dock-inner">
+    <div class="dock-head">
+      <span class="t">Full prompt</span>
+      <span class="count" id="count">0 selected</span>
+      <div class="spacer" style="flex:1"></div>
+      <div class="mode" id="modeSeg" role="group" aria-label="Output style">
+        <button type="button" data-mode="tags" aria-pressed="true">Tags</button>
+        <button type="button" data-mode="brief" aria-pressed="false">Brief</button>
+      </div>
+    </div>
+    <div class="out mono" id="out" aria-live="polite"></div>
+    <div class="dock-foot">
+      <button type="button" class="cbtn" id="copyOther">Copy the other format</button>
+      <button type="button" class="btn primary" id="copyBtn">Copy full prompt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var CLIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>';
+
+  var DATA = {
+    hiphop: {
+      short:"hip hop", tempo:{min:60,max:170,def:88},
+      subgenres:["Boom bap","Trap","Drill","Lo-fi","Cloud rap","G-funk","Phonk","Conscious"],
+      cats:[
+        {key:"daw",   name:"DAW & Software",   color:"--cat-daw",   plabel:"Tools",        items:["FL Studio","Ableton","Logic Pro","MPC workflow","Reason"]},
+        {key:"drums", name:"Drums & Rhythm",   color:"--cat-drums", plabel:"Drums",        items:["808 kit","boom-bap breaks","crisp trap hats","triplet hat rolls","swung 16ths","claps on 2 & 4","ghost notes","vinyl-dusty drums"]},
+        {key:"bass",  name:"Bass & Low End",   color:"--cat-bass",  plabel:"Bass",         items:["tuned 808 bass","sliding 808 glides","deep sine sub","distorted 808","warm upright bass"]},
+        {key:"melody",name:"Melody & Harmony", color:"--cat-melody",plabel:"Melody",       items:["soul/jazz vinyl sample","chopped sample flip","Rhodes keys","dusty piano","guitar loop","dark cinematic strings","bells & plucks","flute lead"]},
+        {key:"vocals",name:"Vocals & Recording",color:"--cat-vocals",plabel:"Vocals",      items:["confident rap lead","layered ad-libs","doubled hooks","auto-tuned melodic rap","soulful vocal sample","spoken intro"]},
+        {key:"fx",    name:"Effects & Texture",color:"--cat-fx",    plabel:"Texture & FX", items:["vinyl crackle","tape saturation","lo-fi filter","slap delay","plate reverb","telephone EQ","bitcrush grit"]},
+        {key:"lyrics",name:"Lyrics & Writing", color:"--cat-lyrics",plabel:"Writing",      items:["storytelling","punchlines & wordplay","multisyllabic rhymes","braggadocio","introspective","catchy hook"]},
+        {key:"arr",   name:"Arrangement",      color:"--cat-arr",   plabel:"Arrangement",  items:["intro–verse–hook","16-bar verses","beat switch","hard-hitting drop","stripped breakdown"]},
+        {key:"mix",   name:"Mix & Master",     color:"--cat-mix",   plabel:"Mix",          items:["punchy loud master","hard-knocking 808s","warm analog glue","wide stereo","vocal-forward mix"]}
+      ]
+    },
+    dnb: {
+      short:"drum & bass", tempo:{min:150,max:185,def:174},
+      subgenres:["Liquid","Neurofunk","Jump-up","Jungle","Techstep","Drumfunk","Halftime","Rollers"],
+      cats:[
+        {key:"daw",   name:"DAW & Software",   color:"--cat-daw",   plabel:"Tools",        items:["Ableton Live","FL Studio","sampler workflow","ReCycle chopping"]},
+        {key:"drums", name:"Drums & Rhythm",   color:"--cat-drums", plabel:"Drums",        items:["chopped Amen break","rolling breakbeats","two-step pattern","tight edited breaks","ghost snares","layered top loops","jungle break chops","halftime feel"]},
+        {key:"bass",  name:"Bass & Low End",   color:"--cat-bass",  plabel:"Bass",         items:["Reese bass","deep sine sub","neuro growls","wobble bass","FM morphing bass","filthy distorted bass","smooth liquid bass"]},
+        {key:"melody",name:"Melody & Harmony", color:"--cat-melody",plabel:"Melody",       items:["lush liquid pads","Rhodes & soulful chords","sweeping strings","dark minimal atmosphere","jazzy stabs","bright arps","ethereal textures","field-recording ambience"]},
+        {key:"vocals",name:"Vocals & Recording",color:"--cat-vocals",plabel:"Vocals",      items:["soulful sung hook","ragga MC toasting","chopped vocal stutters","pitched vocal chops","airy vocal atmosphere","spoken sample"]},
+        {key:"fx",    name:"Effects & Texture",color:"--cat-fx",    plabel:"Texture & FX", items:["multiband distortion","granular textures","sweeping reverb","formant morphs","phaser sweeps","transient snap","resampled artifacts"]},
+        {key:"lyrics",name:"Lyrics & Writing", color:"--cat-lyrics",plabel:"Writing",      items:["MC bars","ragga chant","hook phrase","call-and-response","mostly instrumental"]},
+        {key:"arr",   name:"Arrangement",      color:"--cat-arr",   plabel:"Arrangement",  items:["DJ intro","tension buildup","big first drop","breakdown","second drop","double drop","rolling main section"]},
+        {key:"mix",   name:"Mix & Master",     color:"--cat-mix",   plabel:"Mix",          items:["loud club master","mono sub bass","punchy transients","controlled low end","wide atmospheric mix"]}
+      ]
+    }
+  };
+
+  var NEG = ["muddy mix","harsh highs","clipping / distortion","off-key","out of time","weak drums",
+             "thin bass","overcompressed","background noise","cheesy presets","dated sound",
+             "cluttered arrangement","low quality","heavy autotune"];
+
+  var state = { genre:"hiphop", tempo:88, key:"Any key", mode:"tags", negText:"", sel:{} };
+
+  var VIBE = [
+    {key:"mood",   label:"Mood",   items:["warm","dark","melancholic","euphoric","aggressive","dreamy","gritty","smooth","nostalgic","hypnotic","uplifting","menacing"]},
+    {key:"energy", label:"Energy", items:["laid-back","mid-energy","high-energy","explosive","late-night","cinematic"]},
+    {key:"era",    label:"Era / Flavour", items:["'90s golden era","early 2000s","modern","retro analog","futuristic","underground"]}
+  ];
+
+  var KEYS = ["Any key","A minor","B minor","C minor","C# minor","D minor","E minor","F minor","F# minor","G minor","G# minor",
+              "C major","D major","E major","F major","G major","A major","Bb major"];
+
+  var groupItems = {};
+
+  var $=function(id){return document.getElementById(id);};
+  var grid=$("grid"), subWrap=$("subWrap"), vibe=$("vibe"), out=$("out"), count=$("count");
+
+  KEYS.forEach(function(k){ var o=document.createElement("option"); o.value=k; o.textContent=k; $("keySel").appendChild(o); });
+
+  function sel(k){ return state.sel[k] || (state.sel[k]=[]); }
+
+  function copyText(text, btn){
+    var restore = btn.dataset.label || btn.textContent;
+    btn.dataset.label = restore;
+    var done=function(ok){
+      btn.classList.toggle("copied", ok);
+      btn.textContent = ok? "Copied ✓":"Ctrl+C";
+      setTimeout(function(){ btn.textContent=restore; btn.classList.remove("copied"); if(btn.dataset.icon){ prependIcon(btn); } }, 1400);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});
+    } else {
+      var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand("copy"); done(true);}catch(e){ done(false);} document.body.removeChild(ta);
+    }
+  }
+  function prependIcon(btn){ var s=document.createElement("span"); s.innerHTML=CLIP; btn.insertBefore(s.firstChild, btn.firstChild); }
+
+  function doCopy(text, cb){
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){cb(true);},function(){cb(false);}); return; }
+    var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select();
+    var ok=false; try{ ok=document.execCommand("copy"); }catch(e){} document.body.removeChild(ta); cb(ok);
+  }
+  function copyChip(text, btn){ doCopy(text, function(ok){ btn.classList.toggle("copied", ok); setTimeout(function(){ btn.classList.remove("copied"); }, 1200); }); }
+
+  function makeCopyBtn(getText, label){
+    var b=document.createElement("button"); b.type="button"; b.className="cbtn";
+    b.dataset.icon="1"; b.dataset.label=label||"Copy";
+    b.innerHTML=CLIP; b.appendChild(document.createTextNode(label||"Copy"));
+    b.addEventListener("click", function(){ copyText(getText(), b); });
+    return b;
+  }
+
+  function makeChip(groupKey, item, variant){
+    var pill = variant==="pill";
+    var wrap=document.createElement("span"); wrap.className="chiprow"+(pill?" pill":"");
+    var b=document.createElement("button"); b.type="button";
+    b.className="chip"+(pill?" pill":"");
+    b.setAttribute("role","checkbox"); b.setAttribute("aria-checked","false"); b.setAttribute("aria-pressed","false");
+    b.dataset.group=groupKey; b.dataset.item=item;
+    if(!pill){ var t=document.createElement("span"); t.className="tick"; t.setAttribute("aria-hidden","true"); b.appendChild(t); }
+    b.appendChild(document.createTextNode(item));
+    b.addEventListener("click", function(){ toggle(b); });
+    var cp=document.createElement("button"); cp.type="button"; cp.className="chipcopy"; cp.innerHTML=CLIP;
+    cp.title='Copy "'+item+'"'; cp.setAttribute("aria-label",'Copy "'+item+'"');
+    cp.addEventListener("click", function(e){ e.stopPropagation(); copyChip(item, cp); });
+    wrap.appendChild(b); wrap.appendChild(cp);
+    return wrap;
+  }
+
+  function toggle(b){
+    var g=b.dataset.group, item=b.dataset.item, arr=sel(g), i=arr.indexOf(item), on;
+    if(i>=0){ arr.splice(i,1); on=false; } else { arr.push(item); on=true; }
+    b.setAttribute("aria-pressed", on?"true":"false"); b.setAttribute("aria-checked", on?"true":"false");
+    var nEl=document.querySelector('[data-n="'+g+'"]'); if(nEl){ nEl.textContent=arr.length+"/"+groupItems[g].length; }
+    update();
+  }
+
+  function groupCopyText(k){ var s=sel(k); return (s.length? s : (groupItems[k]||[])).join(", "); }
+
+  // ----- build static VIBE groups (once) -----
+  VIBE.forEach(function(gp){
+    groupItems[gp.key]=gp.items.slice();
+    var wrap=document.createElement("div"); wrap.className="group";
+    var head=document.createElement("div"); head.className="group-head";
+    var lab=document.createElement("span"); lab.className="glabel"; lab.textContent=gp.label;
+    var sp=document.createElement("span"); sp.className="spacer";
+    head.appendChild(lab); head.appendChild(sp);
+    head.appendChild(makeCopyBtn(function(){ return groupCopyText(gp.key); }, "Copy"));
+    var chips=document.createElement("div"); chips.className="chips";
+    gp.items.forEach(function(it){ chips.appendChild(makeChip(gp.key, it, "pill")); });
+    wrap.appendChild(head); wrap.appendChild(chips); vibe.appendChild(wrap);
+  });
+
+  // ----- build NEGATIVE prompt group (once) -----
+  groupItems.negative = NEG.slice();
+  (function(){
+    var wrap=document.createElement("div"); wrap.className="group"; wrap.style.borderBottom="0"; wrap.style.paddingTop="6px";
+    var head=document.createElement("div"); head.className="group-head";
+    var lab=document.createElement("span"); lab.className="glabel"; lab.style.color="var(--neg)"; lab.textContent="Negative prompt — things to avoid";
+    var sp=document.createElement("span"); sp.className="spacer";
+    head.appendChild(lab); head.appendChild(sp);
+    head.appendChild(makeCopyBtn(function(){ return negText(); }, "Copy"));
+    var chips=document.createElement("div"); chips.className="chips";
+    NEG.forEach(function(it){ var c=makeChip("negative", it); c.style.setProperty("--c","var(--neg)"); chips.appendChild(c); });
+    var input=document.createElement("input"); input.type="text"; input.className="neg-input"; input.id="negText";
+    input.setAttribute("aria-label","Custom exclusions");
+    input.placeholder="add your own, comma-separated — e.g. sax solo, spoken word, whistle";
+    input.addEventListener("input", function(){ state.negText=this.value; update(); });
+    wrap.appendChild(head); wrap.appendChild(chips); wrap.appendChild(input);
+    $("negWrap").appendChild(wrap);
+  })();
+
+  function renderGenre(){
+    var g=DATA[state.genre];
+    var t=$("tempo"); t.min=g.tempo.min; t.max=g.tempo.max; state.tempo=g.tempo.def; t.value=g.tempo.def; $("tempoVal").textContent=g.tempo.def;
+    sel("subgenre").length=0; g.cats.forEach(function(c){ sel(c.key).length=0; });
+
+    groupItems.subgenre=g.subgenres.slice();
+    subWrap.innerHTML="";
+    var wrap=document.createElement("div"); wrap.className="group"; wrap.style.borderBottom="0"; wrap.style.paddingTop="6px";
+    var head=document.createElement("div"); head.className="group-head";
+    var lab=document.createElement("span"); lab.className="glabel"; lab.textContent="Subgenre";
+    var sp=document.createElement("span"); sp.className="spacer";
+    head.appendChild(lab); head.appendChild(sp);
+    head.appendChild(makeCopyBtn(function(){ return groupCopyText("subgenre"); }, "Copy"));
+    var chips=document.createElement("div"); chips.className="chips";
+    g.subgenres.forEach(function(s){ chips.appendChild(makeChip("subgenre", s, "pill")); });
+    wrap.appendChild(head); wrap.appendChild(chips); subWrap.appendChild(wrap);
+
+    grid.innerHTML="";
+    g.cats.forEach(function(cat){
+      groupItems[cat.key]=cat.items.slice();
+      var card=document.createElement("article"); card.className="card"; card.style.setProperty("--c","var("+cat.color+")");
+      var bar=document.createElement("div"); bar.className="bar";
+      var body=document.createElement("div"); body.className="body";
+      var h=document.createElement("h3");
+      var nm=document.createElement("span"); nm.textContent=cat.name;
+      var n=document.createElement("span"); n.className="n"; n.dataset.n=cat.key; n.textContent="0/"+cat.items.length;
+      var sp2=document.createElement("span"); sp2.className="spacer";
+      h.appendChild(nm); h.appendChild(n); h.appendChild(sp2);
+      (function(k){ h.appendChild(makeCopyBtn(function(){ return groupCopyText(k); }, "Copy")); })(cat.key);
+      var chipsC=document.createElement("div"); chipsC.className="chips";
+      cat.items.forEach(function(it){ chipsC.appendChild(makeChip(cat.key, it)); });
+      body.appendChild(h); body.appendChild(chipsC);
+      card.appendChild(bar); card.appendChild(body); grid.appendChild(card);
+    });
+    update();
+  }
+
+  function orderedCatSel(){
+    var g=DATA[state.genre], parts=[];
+    g.cats.forEach(function(c){ (sel(c.key)||[]).forEach(function(it){ parts.push(it); }); });
+    return parts;
+  }
+  function totalSelected(){ var n=0; for(var k in state.sel){ if(k==="negative") continue; n+=state.sel[k].length; } return n; }
+  function negText(){
+    var arr=(sel("negative")||[]).slice();
+    (state.negText||"").split(",").forEach(function(s){ s=s.trim(); if(s) arr.push(s); });
+    return arr.join(", ");
+  }
+  function withNeg(t){ var n=negText(); return n ? t+"\n\nNegative prompt:\n"+n : t; }
+
+  function buildTags(){
+    var g=DATA[state.genre], p=[];
+    sel("subgenre").forEach(function(s){ p.push(s.toLowerCase()); });
+    p.push(g.short);
+    p.push(state.tempo+" BPM");
+    if(state.key!=="Any key") p.push(state.key);
+    ["mood","energy","era"].forEach(function(k){ sel(k).forEach(function(v){ p.push(v); }); });
+    orderedCatSel().forEach(function(it){ p.push(it); });
+    return p.join(", ");
+  }
+  function buildBrief(){
+    var g=DATA[state.genre], subs=sel("subgenre");
+    var lead="A "+(subs.length? subs.join(" / ").toLowerCase()+" ":"")+g.short+" track at "+state.tempo+" BPM"+(state.key!=="Any key"?" in "+state.key:"")+".";
+    var lines=[lead];
+    var vibeSel=[].concat(sel("mood"),sel("energy"),sel("era"));
+    if(vibeSel.length) lines.push("Vibe: "+vibeSel.join(", ")+".");
+    g.cats.forEach(function(c){ var s=sel(c.key); if(s.length) lines.push(c.plabel+": "+s.join(", ")+"."); });
+    return lines.join("\n");
+  }
+  function currentText(){ return state.mode==="tags"? buildTags() : buildBrief(); }
+  function otherText(){ return state.mode==="tags"? buildBrief() : buildTags(); }
+
+  function update(){
+    $("keySel").value=state.key;
+    var n=totalSelected();
+    count.textContent=n+(n===1?" ingredient":" ingredients");
+    var text=withNeg(currentText());
+    out.textContent=text; out.dataset.raw=text;
+    if(n===0 && !negText()){ var h=document.createElement("span"); h.className="ph"; h.textContent=" · pick ingredients to enrich the prompt"; out.appendChild(h); }
+  }
+
+  // ----- controls -----
+  $("genreSeg").addEventListener("click",function(e){ var b=e.target.closest("button[data-genre]"); if(!b)return;
+    Array.prototype.forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed","false");});
+    b.setAttribute("aria-pressed","true"); state.genre=b.getAttribute("data-genre"); renderGenre(); });
+  $("modeSeg").addEventListener("click",function(e){ var b=e.target.closest("button[data-mode]"); if(!b)return;
+    Array.prototype.forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed","false");});
+    b.setAttribute("aria-pressed","true"); state.mode=b.getAttribute("data-mode"); update(); });
+  $("tempo").addEventListener("input",function(){ state.tempo=+this.value; $("tempoVal").textContent=this.value; update(); });
+  $("keySel").addEventListener("change",function(){ state.key=this.value; update(); });
+
+  function deselectAllChips(){ Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(c){ c.setAttribute("aria-pressed","false"); c.setAttribute("aria-checked","false"); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-n]"),function(n){ n.textContent="0/"+n.textContent.split("/")[1]; }); }
+
+  $("clearBtn").addEventListener("click",function(){ state.sel={}; state.negText=""; var ni=$("negText"); if(ni) ni.value=""; deselectAllChips(); update(); });
+
+  function pickRandom(arr,k){ var pool=arr.slice(),r=[]; for(var i=0;i<k&&pool.length;i++){ r.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]); } return r; }
+  function selectByValue(group,val){ var all=document.querySelectorAll('.chip[data-group="'+group+'"]');
+    for(var i=0;i<all.length;i++){ if(all[i].dataset.item===val){ toggle(all[i]); return; } } }
+
+  $("randomBtn").addEventListener("click",function(){
+    var g=DATA[state.genre]; state.sel={}; deselectAllChips();
+    pickRandom(g.subgenres,1+Math.floor(Math.random()*2)).forEach(function(s){ selectByValue("subgenre",s); });
+    pickRandom(VIBE[0].items,1+Math.floor(Math.random()*2)).forEach(function(v){ selectByValue("mood",v); });
+    selectByValue("energy", VIBE[1].items[Math.floor(Math.random()*VIBE[1].items.length)]);
+    var t=g.tempo.min+Math.floor(Math.random()*(g.tempo.max-g.tempo.min+1)); $("tempo").value=t; state.tempo=t; $("tempoVal").textContent=t;
+    var per={drums:2,bass:2,melody:2,vocals:1,fx:2,arr:1,lyrics:1};
+    g.cats.forEach(function(cat){ var k=per[cat.key]; if(!k)return;
+      pickRandom(cat.items, 1+Math.floor(Math.random()*k)).forEach(function(it){ selectByValue(cat.key,it); }); });
+    update();
+  });
+
+  $("copyBtn").addEventListener("click",function(){ copyText(out.dataset.raw||"", this); });
+  $("copyOther").addEventListener("click",function(){ copyText(withNeg(otherText()), this); });
+
+  // ---------- presets & sharing ----------
+  var LS="beatbrief.presets.v1";
+  var MEM=(function(){ try{ return JSON.parse(localStorage.getItem(LS))||{}; }catch(e){ return {}; } })();
+  function persist(){ try{ localStorage.setItem(LS, JSON.stringify(MEM)); }catch(e){} }
+
+  function setSeg(segId, attr, val){
+    var seg=$(segId); Array.prototype.forEach.call(seg.querySelectorAll("button"), function(b){
+      b.setAttribute("aria-pressed", b.getAttribute("data-"+attr)===val ? "true":"false"); });
+  }
+  function snapshot(){
+    var s={}; Object.keys(state.sel).forEach(function(k){ if(state.sel[k]&&state.sel[k].length) s[k]=state.sel[k].slice(); });
+    return { g:state.genre, t:state.tempo, k:state.key, m:state.mode, n:state.negText||"", s:s };
+  }
+  function encode(o){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }catch(e){ return ""; } }
+  function decode(str){ try{ return JSON.parse(decodeURIComponent(escape(atob(str.trim())))); }catch(e){ return null; } }
+  function shareLink(o){ var base=""; try{ base=window.location.origin+window.location.pathname; }catch(e){} return base+"#p="+encode(o); }
+
+  function applyState(o){
+    if(!o) return false;
+    if(o.g && DATA[o.g]){ state.genre=o.g; setSeg("genreSeg","genre",o.g); renderGenre(); }
+    state.sel={}; deselectAllChips();
+    state.negText = o.n!=null ? o.n : "";
+    var ni=$("negText"); if(ni) ni.value=state.negText;
+    var s=o.s||{}; Object.keys(s).forEach(function(g){ (s[g]||[]).forEach(function(it){ selectByValue(g,it); }); });
+    if(o.t!=null){ state.tempo=+o.t; $("tempo").value=o.t; $("tempoVal").textContent=o.t; }
+    if(o.k!=null){ state.key=o.k; }
+    if(o.m){ state.mode=o.m; setSeg("modeSeg","mode",o.m); }
+    update();
+    return true;
+  }
+
+  var CLIP2='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>';
+  function renderPresetList(){
+    var host=$("presetList"); host.innerHTML="";
+    Object.keys(MEM).forEach(function(name){
+      var chip=document.createElement("span"); chip.className="pchip";
+      var load=document.createElement("button"); load.type="button"; load.className="load"; load.textContent=name;
+      load.title="Load this preset"; load.addEventListener("click", function(){ applyState(MEM[name]); });
+      var copy=document.createElement("button"); copy.type="button"; copy.className="mini"; copy.innerHTML=CLIP2;
+      copy.dataset.icon="1"; copy.dataset.label="";
+      copy.title="Copy share link"; copy.setAttribute("aria-label","Copy share link for "+name);
+      copy.addEventListener("click", function(){ copyText(shareLink(MEM[name]), copy); });
+      var del=document.createElement("button"); del.type="button"; del.className="mini del"; del.textContent="×";
+      del.title="Delete preset"; del.setAttribute("aria-label","Delete "+name);
+      del.addEventListener("click", function(){ delete MEM[name]; persist(); renderPresetList(); });
+      chip.appendChild(load); chip.appendChild(copy); chip.appendChild(del); host.appendChild(chip);
+    });
+  }
+
+  $("savePreset").addEventListener("click", function(){
+    var name=($("presetName").value||"").trim();
+    if(!name) name="Preset "+(Object.keys(MEM).length+1);
+    MEM[name]=snapshot(); persist(); $("presetName").value=""; renderPresetList();
+  });
+  $("presetName").addEventListener("keydown", function(e){ if(e.key==="Enter") $("savePreset").click(); });
+
+  $("copyLink").addEventListener("click", function(){ copyText(shareLink(snapshot()), this); });
+  $("copyCode").addEventListener("click", function(){ copyText(encode(snapshot()), this); });
+
+  function extractCode(v){ v=(v||"").trim(); if(!v) return ""; var i=v.indexOf("p="); if(i>=0) v=v.slice(i+2); return v.split("#")[0].split("&")[0].trim(); }
+  $("importBtn").addEventListener("click", function(){
+    var btn=this, o=decode(extractCode($("importBox").value));
+    if(o && applyState(o)){ $("importBox").value=""; btn.textContent="Loaded ✓"; }
+    else { btn.textContent="Invalid"; }
+    setTimeout(function(){ btn.textContent="Import"; }, 1400);
+  });
+  $("importBox").addEventListener("keydown", function(e){ if(e.key==="Enter") $("importBtn").click(); });
+
+  // ---------- init ----------
+  renderGenre();
+  renderPresetList();
+  try{
+    var h=window.location.hash||"";
+    if(h.indexOf("p=")>=0){ var o=decode(extractCode(h)); if(o) applyState(o); }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
